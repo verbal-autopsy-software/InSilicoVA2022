@@ -220,7 +220,7 @@ insilico2020 <- function(data, data.type = c("WHO2020", "WHO2016")[1], sci = NUL
           }
           data("probbaseV5_2020", envir = environment())
           new_sci <- get("probbaseV5_2020", envir  = environment())
-
+          new_sci <- data.frame(new_sci)
 
 	fit <- insilico.fit(data = new_data, 
 						data.type = "WHO2016",
