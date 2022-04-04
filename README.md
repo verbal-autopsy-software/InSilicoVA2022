@@ -1,4 +1,4 @@
-# InSilicoVA2020
+# InSilicoVA2022
 
 To install this package, download this repository and run the following R command:
 
@@ -6,7 +6,7 @@ To install this package, download this repository and run the following R comman
 install.packages("path/to/this/repository/InterVA2020", repos = NULL, type = "source")
 ```
 
-To use InSilicoVA2020, 'rJava' package is required and it requires Java 6 or above properly installed and linked to R. 
+To use InSilicoVA2022, 'rJava' package is required and it requires Java 6 or above properly installed and linked to R. 
 
 For more information about additional tools see [openva.net](https://openva.net)
 
