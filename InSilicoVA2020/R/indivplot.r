@@ -45,6 +45,53 @@
 #' using verbal autopsies, \emph{Journal of the American Statistical
 #' Association} (2016), 111(515):1036-1049.
 #' @keywords InSilicoVA
+#' @examples
+#' 
+#' \dontrun{
+#' # Toy example with 1000 VA deaths
+#' data(RandomVA1)
+#' fit1<- insilico(RandomVA1, subpop = NULL,  
+#'               Nsim = 1000, burnin = 500, thin = 10 , seed = 1,
+#'               auto.length = FALSE)
+#' summary(fit1, id = "d199")
+#' 
+#' # update credible interval for individual probabilities to 90%
+#' indiv.new <- get.indiv(fit1, CI = 0.9)
+#' fit1$indiv.prob.lower <- indiv.new$lower
+#' fit1$indiv.prob.upper <- indiv.new$upper
+#' fit1$indiv.CI <- 0.9
+#' summary(fit1, id = "d199")
+#' 
+#' 
+#' # get empirical aggregated COD distribution 
+#' agg.csmf <- get.indiv(data = RandomVA2, fit1, CI = 0.95, 
+#'                       is.aggregate = TRUE, by = NULL)
+#' head(agg.csmf)
+#' 
+
+#' # aggregate individual COD distribution by sex and age
+#' # note the model was fitted assuming the same CSMF for all deaths
+#' # this aggregation provides an approximate CSMF for each sub-groups
+#' agg.by.sex.age <- get.indiv(data = RandomVA2, fit1, CI = 0.95, 
+#'                         is.aggregate = TRUE, by = list("sex", "age"))
+#' head(agg.by.sex.age$mean)
+#' 
+#' # plot of aggregated individual COD distribution
+#' # 0. plot for all data
+#' indivplot(agg.csmf, top = 10)
+#' # 1. plot for specific one group
+#' indivplot(agg.by.sex.age, which.plot = "Men 60-", top = 10)
+#' # 2. comparing multiple groups
+#' indivplot(agg.by.sex.age, which.plot = list("Men 60+", "Men 60-"), 
+#'                           top = 5)
+#' # 3. comparing multiple groups on selected causes
+#' indivplot(agg.by.sex.age, which.plot = list("Men 60-", "Women 60-"), 
+#'                           top = 0, causelist = c(
+#'                             "HIV/AIDS related death", 
+#'                             "Pulmonary tuberculosis", 
+#'                             "Other and unspecified infect dis", 
+#'                             "Other and unspecified NCD"))
+#' } 
 #' @export 
 indivplot <- function(x, type = c("errorbar", "bar")[1], 
 	top = 10, causelist = NULL, which.plot = NULL, 
@@ -136,7 +183,16 @@ indivplot <- function(x, type = c("errorbar", "bar")[1],
 		g <- g + ggtitle(title)
 		g <- g + scale_y_continuous() 
 		if(horiz) g <- g + coord_flip()
-		if(bw) g <- g + theme_bw()
+		if(bw){
+			g <- g + theme_bw()
+		}else{
+			cbp <- c("#000000", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+		    maxn <- length(unique(csmf.toplot$Group))
+		    if(maxn > length(cbp)){
+		      cbp <- colorRampPalette(cbp)(maxn)
+		    }
+		    g <- g + scale_color_manual(values = cbp)
+		}
 		if(!horiz) g <- g + theme(axis.text.x = element_text(angle = angle, hjust = 1))
 		return(g)
 	}else{		
@@ -159,7 +215,16 @@ indivplot <- function(x, type = c("errorbar", "bar")[1],
 			g <- g + xlab(xlab) + ylab(ylab) 
 			g <- g + ggtitle(title)
 			if(horiz) g <- g + coord_flip()
-			if(bw) g <- g + theme_bw()
+			if(bw){
+				g <- g + theme_bw()
+			}else{
+				cbp <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+			    maxn <- length(unique(csmf.toplot$Group))
+			    if(maxn > length(cbp)){
+			      cbp <- colorRampPalette(cbp)(maxn)
+			    }
+			    g <- g + scale_fill_manual(values = cbp)
+			}
 			if(!horiz) g <- g + theme(axis.text.x = element_text(angle = angle, hjust = 1))	
 			return(g)
 		}

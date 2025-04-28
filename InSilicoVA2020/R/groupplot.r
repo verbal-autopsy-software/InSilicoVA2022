@@ -36,6 +36,47 @@
 #' using verbal autopsies, \emph{Journal of the American Statistical
 #' Association} (2016), 111(515):1036-1049.
 #' @keywords InSilicoVA
+#' @examples
+#' \dontrun{
+#'   data(RandomVA1) 
+#'   ##
+#'   ## Scenario 1: without sub-population specification
+#'   ##
+#'   fit1<- insilico(RandomVA1, subpop = NULL,  
+#'                 Nsim = 1000, burnin = 500, thin = 10 , seed = 1,
+#'                 auto.length = FALSE)
+#'   # stack bar plot for grouped causes
+#'   # the default grouping could be seen from
+#'   data(SampleCategory)
+#'   stackplot(fit1, type = "dodge", xlab = "")
+#'   
+#'   ##
+#'   ## Scenario 2: with sub-population specification
+#'   ##
+#'   data(RandomVA2)
+#'   fit2<- insilico(RandomVA2, subpop = list("sex"),  
+#'                 Nsim = 1000, burnin = 500, thin = 10 , seed = 1,
+#'                 auto.length = FALSE)
+#'   stackplot(fit2, type = "stack", angle = 0)
+#'   stackplot(fit2, type = "dodge", angle = 0)
+#'   # Change the default grouping by separating TB from HIV
+#'   data(SampleCategory)
+#'   SampleCategory[c(3, 9), ]
+#'   SampleCategory[3, 2] <- "HIV/AIDS"
+#'   SampleCategory[9, 2] <- "TB"
+#'   stackplot(fit2, type = "stack", grouping = SampleCategory, 
+#'             sample.size.print = TRUE, angle = 0)
+#'   stackplot(fit2, type = "dodge", grouping = SampleCategory,
+#'             sample.size.print = TRUE, angle = 0)
+#'   
+#'   # change the order of display for sub-population and cause groups
+#'   groups <- c("HIV/AIDS", "TB", "Communicable", "NCD", "External",
+#'               "Maternal", "causes specific to infancy") 
+#'   subpops <- c("Women", "Men")
+#'   stackplot(fit2, type = "stack", grouping = SampleCategory, 
+#'             order.group = groups, order.sub = subpops, 
+#'             sample.size.print = TRUE, angle = 0)	
+#' } 
 #' @export stackplot
 stackplot <- function(x, grouping = NULL,
     type = c("stack", "dodge")[1], 
@@ -175,7 +216,16 @@ stackplot <- function(x, grouping = NULL,
 	}
 	g <- g + ggtitle(title)
 	if(horiz) g <- g + coord_flip()
-	if(bw) g <- g + theme_bw()
+	if(bw){
+		g <- g + theme_bw() + scale_fill_grey(start = 0, end = 0.9)
+	}else{
+		cbp <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+    maxn <- length(unique(toplot$Causes))
+    if(maxn > length(cbp)){
+      cbp <- colorRampPalette(cbp)(maxn)
+    }
+    g <- g + scale_fill_manual(values = cbp)
+	}
 	hjust <- NULL
 	if(angle != 0) hjust = 1
 	if(!horiz) g <- g + theme(axis.text.x = element_text(angle = angle, hjust = hjust))	

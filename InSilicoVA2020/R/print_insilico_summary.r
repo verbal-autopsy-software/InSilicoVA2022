@@ -15,6 +15,26 @@
 #' Kathleen Kahn and Samuel J. Clark Probabilistic cause-of-death assignment
 #' using verbal autopsies, \emph{Journal of the American Statistical
 #' Association} (2016), 111(515):1036-1049.
+#' @examples
+#' \dontrun{
+#' # load sample data together with sub-population list
+#' data(RandomVA1)
+#' # extract InterVA style input data
+#' data <- RandomVA1$data
+#' # extract sub-population information. 
+#' # The groups are "HIV Positive", "HIV Negative" and "HIV status unknown".
+#' subpop <- RandomVA1$subpop
+#' 
+#' # run without subpopulation
+#' fit1<- insilico( data, subpop = NULL, 
+#'               Nsim = 400, burnin = 200, thin = 10 , seed = 1,
+#'               external.sep = TRUE, keepProbbase.level = TRUE)
+#' summary(fit1)
+#' summary(fit1, top = 10)
+#'
+#' # save individual COD distributions to files
+#' summary(fit1, file = "results.csv")
+#' }
 #' @export 
 print.insilico_summary <- function(x, ...) {
 	# print single death summary
