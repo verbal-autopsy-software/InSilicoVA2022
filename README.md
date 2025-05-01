@@ -2,5 +2,11 @@
 
 **Test version** of InSilicoVA for the 2022 WHO VA instrument. 
 
-<ins> **_The package has not been tested or validated in any way. Use at your own risk. We currently do not have support of any kind for this package._** </ins>
+<ins> 
+**_Use at your own risk. 
+
+The package has not been tested or validated in any way. 
+
+At this time, we do not support this package in any way._**
+</ins>
 
