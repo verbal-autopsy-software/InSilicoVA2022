@@ -5,7 +5,7 @@
 * <ins>**_The package has not been tested or validated in any way._**</ins>
 * <ins>**_At this time, we do not support this package in any way._**</ins>
 
-Install the package with the following command:
+Install and load the package with the following commands:
 
 ```
 library(devtools)
