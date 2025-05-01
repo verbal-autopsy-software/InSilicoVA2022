@@ -66,7 +66,7 @@
 #' @keywords InSilicoVA
 #' 
 #' @export insilico.fit
-insilico.fit <- function(data, data.type = c("WHO2012", "WHO2016")[1], sci = NULL, isNumeric = FALSE, updateCondProb = TRUE, keepProbbase.level = TRUE,  CondProb = NULL, CondProbNum = NULL, datacheck = TRUE, datacheck.missing = TRUE, warning.write = FALSE, directory = NULL, external.sep = TRUE, Nsim = 4000, thin = 10, burnin = 2000, auto.length = TRUE, conv.csmf = 0.02, jump.scale = 0.1, levels.prior = NULL, levels.strength = 1, trunc.min = 0.0001, trunc.max = 0.9999, subpop = NULL, java_option = "-Xmx1g", seed = 1, phy.code = NULL, phy.cat = NULL, phy.unknown = NULL, phy.external = NULL, phy.debias = NULL, exclude.impossible.cause = c("subset2", "subset", "all", "InterVA", "none")[1], impossible.combination = NULL, no.is.missing = FALSE, customization.dev = FALSE, Probbase_by_symp.dev = FALSE, probbase.dev = NULL, table.dev = NULL, table.num.dev = NULL, gstable.dev = NULL, nlevel.dev = NULL, indiv.CI = NULL, groupcode=FALSE, known_labels = NULL, ...){ 
+insilico.fit <- function(data, data.type = c("WHO2012", "WHO2016", "WHO2022")[3], sci = NULL, isNumeric = FALSE, updateCondProb = TRUE, keepProbbase.level = TRUE,  CondProb = NULL, CondProbNum = NULL, datacheck = TRUE, datacheck.missing = TRUE, warning.write = FALSE, directory = NULL, external.sep = TRUE, Nsim = 4000, thin = 10, burnin = 2000, auto.length = TRUE, conv.csmf = 0.02, jump.scale = 0.1, levels.prior = NULL, levels.strength = 1, trunc.min = 0.0001, trunc.max = 0.9999, subpop = NULL, java_option = "-Xmx1g", seed = 1, phy.code = NULL, phy.cat = NULL, phy.unknown = NULL, phy.external = NULL, phy.debias = NULL, exclude.impossible.cause = c("subset2", "subset", "all", "InterVA", "none")[1], impossible.combination = NULL, no.is.missing = FALSE, customization.dev = FALSE, Probbase_by_symp.dev = FALSE, probbase.dev = NULL, table.dev = NULL, table.num.dev = NULL, gstable.dev = NULL, nlevel.dev = NULL, indiv.CI = NULL, groupcode=FALSE, known_labels = NULL, ...){ 
   # handling changes throughout time
   args <- as.list(match.call())
   if(!is.null(args$length.sim)){
@@ -77,6 +77,10 @@ insilico.fit <- function(data, data.type = c("WHO2012", "WHO2016")[1], sci = NUL
 
   if(!datacheck && data.type == "WHO2016"){
   	warning("Data check is turned off. Please be very careful with this, because some indicators needs to be negated in the data check steps (i.e., having symptom = Yes turned into not having symptom = No). Failure to properly negate all such symptoms will lead to erroneous inference.")
+  }
+  if(datacheck && data.type == "WHO2022"){
+  	warning("Data consistency check is now being performed outside of InSilicoVA. Please ensure your input data has been checked before fitting the model.")
+  	datacheck <- FALSE
   }
 
   ## Add java system check
@@ -135,6 +139,34 @@ InterVA.table <- function(standard = TRUE, min = NULL, table.num.dev = NULL){
 		}
 		return(sort(table.num.dev, decreasing = TRUE))
 	}
+}
+if(data.type == "WHO2022"){
+	# Only changed levels
+	InterVA.table <- function(standard = TRUE, min = NULL, table.num.dev = NULL){
+	###########################################################
+	# Always  (100% / 99.9%)  -- I
+	# Almost Always  (80%)  -- A
+	# Common  (50%)  -- B
+	# Often (10%)  -- C
+	# Somewhat Unusual (1%)  -- D
+	# 0.1% -- E
+	# Unusual  (0.01%)  -- F
+	# Rare  (0.001%)  -- G
+	# Hardly Every  (0.0001%)  -- H
+	# Never  (0%)  -- N
+	if(standard){
+		if(is.null(min)){stop("Minimum level not specified")}
+		return(c(1, 0.8, 0.5, 0.1, 0.01, 0.001, 0.0001, 0.00001, 0.000005, min))		
+	}else{
+		if(is.null(table.num.dev)){
+			stop("Numerical level table not specified")
+		}
+		if(min(table.num.dev) == 0){
+			table.num.dev[which.min(table.num.dev)] <- sort(table.num.dev, decreasing=FALSE)[2]/10			
+		}
+		return(sort(table.num.dev, decreasing = TRUE))
+	}
+}
 }
 
 scale.vec <- function(aaa, scale = NULL, scale.max = NULL, reverse = TRUE){
@@ -232,6 +264,60 @@ change.inter <- function(x, order = FALSE, standard = TRUE, table.dev = NULL, ta
     return(y)   
 }
 
+if(data.type == "WHO2022"){
+	# Only changed levels
+	change.inter <- function(x, order = FALSE, standard = TRUE, table.dev = NULL, table.num.dev = NULL){
+	###########################################################
+	# function to translate alphebatic matrix into numeric matrix or order matrix
+	# @param:
+	# 	x      : alphabetic matrix 
+	#	order  : whether to change the matrix into order matrix
+	#   standard: whether to use the standard table
+	#   table.dev: new table of level names used high to low
+	#   table.num.dev: new table of numerical values correspond to table.dev
+	# @values:
+	#	numeric matrix by InterVA probbase rules, or the order matrix
+		a <- dim(x)[1]
+		b <- dim(x)[2]
+		if(is.null(a)){
+			y <- rep(0,length(x))
+		}else{
+			y <- matrix(0, a, b)
+		}  	
+		inter.table <- InterVA.table(standard = standard, table.num.dev = table.num.dev, min = 0)
+		if(is.null(table.dev)){
+			  y[x == "I"] <- inter.table[1]
+		    y[x == "A"] <- inter.table[2]
+		    y[x == "B"] <- inter.table[3]
+		    y[x == "C"] <- inter.table[4]
+		    y[x == "D"] <- inter.table[5]
+		    y[x == "E"] <- inter.table[6]
+		    y[x == "F"] <- inter.table[7]
+		    y[x == "G"] <- inter.table[8]
+		    y[x == "H"] <- inter.table[9]
+		    y[x == "N"] <- inter.table[10]
+		}else{
+			if(length(table.dev) != length(table.num.dev)){
+				stop("table.dev and table.num.dev have different length")
+			}
+			for(i in 1:length(table.dev)){
+				y[x == table.dev[i]] <- inter.table[i] 
+			}
+		}
+
+
+	    if(order){
+	    	for(i in 1: length(inter.table)){
+				y[y == inter.table[i] ] <- i
+			}
+	    }
+	    if(!is.null(a)){
+			y <- matrix(y, a, b)
+		}  	
+	    return(y)   
+	}
+
+}
 cond.initiate <- function(probbase.order, expIni, Inter.ini, min, max){###########################################################
 # Randomly initialize probbase from order matrix
 # @param:
@@ -541,7 +627,6 @@ removeExt <- function(data, prob.orig, is.Numeric, subpop, subpop_order_list, ex
 				ext.cod = ext.cod,
 				ext.csmf = ext.csmf))
 }
-
 removeExtV5 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_order_list, external.causes, external.symps, negate){
 ###########################################################
 # function to remove external causes/symps and assign deterministic deaths
@@ -609,6 +694,72 @@ removeExtV5 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_o
 				negate = negate))
 	}
 
+removeExtV2022 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_order_list, external.causes, external.symps, negate){
+###########################################################
+# function to remove external causes/symps and assign deterministic deaths
+# @param:
+#	   data
+#      prob.orig: directly from InterVA5
+# @values:
+#	   data: after removing external death
+#	   prob.orig: after deleting external symptoms
+#	   exts: external death list		
+	extSymps <- external.symps
+	extCauses <- external.causes
+	# extract subset of data for external symptoms
+	N.all <- dim(data)[1]
+	extData <- data[, extSymps + 1]
+	if(is.Numeric){
+		neg <- 0
+		pos <- 1
+	}else{
+		neg <- "N"
+		pos <- "Y"
+	}
+	ext.where <- which(apply(extData, 1, function(x){
+									length(which(x == pos)) }) > 0)	
+	extData <- as.matrix(extData[ext.where, ])
+	ext.id <- data[ext.where, 1]
+	ext.sub <- subpop[ext.where]
+	probsub <- change.inter(prob.orig[external.symps, external.causes])
+	csmfsub <- change.inter(csmf.orig[external.causes])
+
+	# delete the causes from probbase
+	prob.orig <- prob.orig[ -(extSymps), -(extCauses)]
+	negate <- negate[-extSymps]
+	if(length(extSymps) > 0) data <- data[, -(extSymps + 1)]
+	if(length(ext.where) > 0){
+		probs <- matrix(1, dim(extData)[1], length(external.causes))
+		for(i in 1:dim(extData)[1]){
+			for(j in 1:length(external.causes)){
+				probs[i, j] <- csmfsub[j] * prod(probsub[which(extData[i,] == pos), j])
+			}
+			probs[i, ] <- probs[i, ] / sum(probs[i, ])
+		}
+		ext.prob <- probs	
+		# delete death confirmed external
+		data <- data[-ext.where, ]
+	}else{
+		if(!is.null(subpop)){
+			ext.csmf <- vector("list", length(subpop_order_list))
+			for(i in 1:length(ext.csmf)){
+				ext.csmf[[i]] <- rep(0, length(extCauses))
+			}
+		}else{
+			ext.csmf <- rep(0, length(extCauses))
+		}
+		ext.prob <- matrix(0, dim(extData)[1], length(external.causes))
+
+		return(list(data = data, 
+				subpop = subpop,
+				prob.orig = prob.orig, 
+				ext.sub  = ext.sub,
+				ext.id = ext.id, 
+				ext.prob = ext.prob,
+				ext.cod = NULL,
+				ext.csmf = ext.csmf, 
+				negate = negate))
+	}
 
 
 	if(!is.null(subpop)){
@@ -635,6 +786,7 @@ removeExtV5 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_o
 				negate = negate))
 }
 
+ 
 ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 ###########################################################
 # function to parse results from Java into correct place
@@ -764,6 +916,8 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 	##----------------------------------------------------------##
 	if(!is.null(nlevel.dev)){
 		nlevel <- nlevel.dev
+	}else if(data.type == "WHO2022"){
+		nlevel <- 10
 	}else{
 		nlevel <- 15
 	}
@@ -800,6 +954,30 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 	    message("Using Probbase version:  ", probbaseV5Version)
 		data("causetextV5", envir = environment())
 		causetext<- get("causetextV5", envir  = environment())		
+	}else if(data.type == "WHO2022"){
+		# changed file names and dimensions
+		if (is.null(sci)) {
+	        data("probbase2022", envir = environment())
+	        probbaseV5 <- get("probbase2022", envir = environment())
+	        probbaseV5 <- as.matrix(probbaseV5)
+	        probbaseV5Version <- probbaseV5[1,3]
+	    }
+	    if (!is.null(sci)) {
+	        validSCI <- TRUE
+	        if (!is.data.frame(sci)) validSCI <- FALSE
+	        if (nrow(sci) != 343) validSCI <- FALSE
+	        if (ncol(sci) != 68) validSCI <- FALSE
+	        if (!validSCI) {
+	            stop("error: invalid sci (must be data frame with 343 rows and 68 columns).")
+	        }
+	        probbaseV5 <- as.matrix(sci)
+	        probbaseV5Version <- probbaseV5[1,3]
+	    }
+	    probbase <- probbaseV5
+	    message("Using Probbase version:  ", probbaseV5Version)
+		  data("causetext2022", envir = environment())
+		  causetext <- get("causetext2022", envir  = environment())		
+
 	}
 	 if (groupcode) {
         causetext <- causetext[, -2]
@@ -896,8 +1074,51 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 		    	print(test_ext_causes)
 		    }
 
-		}else{
-			stop("Wrong data.type, need to be WHO2012 or WHO2016")
+		}else if(data.type == "WHO2022"){
+			  # New dimensions in this block!
+				# external symptoms: row 60 - 83, or 59:82 in all symps
+		   	# external causes: column 61 to 71, or 54:64 in all causes
+		   	# all causes columns: column 8 to 71
+		   	# all symptoms rows: column 2 to 343
+
+			# Prior does not matter, just remove + and - sign now before updating them to be better
+			Sys_Prior <- probbase[1,8:71]
+			Sys_Prior <- gsub("\\+", "", Sys_Prior)
+			Sys_Prior <- gsub("\\-", "", Sys_Prior)
+			Sys_Prior <- as.numeric(change.inter(Sys_Prior, order = FALSE), standard = TRUE)
+			prob.orig <- probbase[2:343,8:71]
+		   	# subst.vector <- probbase[2:354, 6]
+	  	negate <- rep(FALSE, dim(prob.orig)[1])
+		  	# negate[subst.vector == "N"] <- TRUE
+
+		  	if(dim(data)[2] != dim(probbase)[1] ){
+		  		correct_names <- probbase[2:343, 1]
+		  		exist <- correct_names %in% tolower(colnames(data))
+		  		if(length(which(exist == FALSE)) > 0){
+			        stop(paste("error: invalid data input format. Symptom(s) not found:", correct_names[!exist]))
+		  		}else{
+		  			data <- data[, c(1, match(correct_names, tolower(colnames(data))))]
+		  			colnames(data)[-1] <- tolower(colnames(data)[-1])
+
+		  		}
+	    	}
+	    	## check the column names and give warning
+		    data("RandomVA2022", envir = environment())
+		    RandomVA1 <- get("RandomVA2022", envir  = environment())
+		    valabels <- colnames(RandomVA1)
+		    vacauses <- causetext[4:67,2]
+		    external.causes = seq(54, 64)
+		    external.symps = seq(59, 82)
+		    # These are codes to verify the external causes and symptoms are correct when probbase is updated
+		    if(FALSE){
+		    	test_symps <- valabels[-1]
+		    	test_ext_symps <- probbaseV5[match(test_symps[external.symps], probbaseV5[,1]), 2]
+		    	test_ext_causes <- vacauses[external.causes]
+		    	print(test_ext_symps)
+		    	print(test_ext_causes)
+		    }
+		  }else{
+			stop("Wrong data.type, need to be WHO2012 or WHO2016 or WHO 2022")
 		}
 	  	
 	  
@@ -1038,6 +1259,31 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
   		data.checked <- NULL
   	}
 
+  	# New data updates for WHO2022
+  	if(data.type=="WHO2022"){
+  		# Does not switch data to lower case, only data.checked
+			# for(i in 2:(dim(data)[2])){
+			# 	data[which(data[, i] == "Y"), i] <- "y"
+			# 	data[which(data[, i] == ""), i] <- "n"
+			# 	data[which(data[, i] == "."), i] <- "-"
+			# }
+	  	# All categorical variables with (0, 1, 0) -> (NA, 1, NA) to avoid double multiplying the (1-p) terms
+	  	catvar <- unique(probbase[, 4])
+	  	catvar <- catvar[catvar != ""]
+	  	catvar <- catvar[!is.na(catvar)]
+	  	for(cc in catvar){
+	  		sub <- probbase[which(probbase[, 4] == cc), 1]
+				count.yes <- apply(data[, sub], 1, function(x){sum(x == "Y")})
+				conf <- which(count.yes > 1)
+				# Handle multiple Yes --> Keep the first one only
+				if(length(conf) > 1)
+				for(i in conf){
+	  			data[i, sub][which(data[i, sub] == "Y")[-1]] <- "." 
+	  		}
+	  		data[, sub][data[, sub] == "N"] <- "."
+	  	}
+		}
+
   	if(length(data) == 0) stop("All deaths failed data checks. Please double check your input data.")
   	## remove external causes
   	if(external.sep){
@@ -1045,9 +1291,16 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
   		externals <- removeExt(data,prob.orig, isNumeric, subpop, subpop_order_list, external.causes, external.symps)
 
   		
-  		}else{
+  		}else if(data.type == "WHO2016"){
   			csmf.orig <- probbase[1, -(1:20)]
-			externals <- removeExtV5(data,prob.orig, csmf.orig, isNumeric, subpop, subpop_order_list, external.causes, external.symps, negate)
+			  externals <- removeExtV5(data,prob.orig, csmf.orig, isNumeric, subpop, subpop_order_list, external.causes, external.symps, negate)
+  		}else if(data.type == "WHO2022"){
+	  			csmf.orig <- probbase[1, -(1:7)]
+	  			#  Need better prior here TODO!!
+	  			csmf.orig <- gsub("\\+", "", csmf.orig)
+					csmf.orig <- gsub("\\-", "", csmf.orig)
+
+				  externals <- removeExtV2022(data,prob.orig, csmf.orig, isNumeric, subpop, subpop_order_list, external.causes, external.symps, negate)
   		}
   		data <- externals$data
   		subpop <- externals$subpop
@@ -1059,7 +1312,7 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
   				out <- data.frame(ID = externals$ext.id, 
   							  causes = vacauses[externals$ext.cod])
 
-  			}else if(data.type == "WHO2016"){
+  			}else{
   				extprobs <- externals$ext.prob
 	  			out <- data.frame(ID = externals$ext.id, extprobs)
   				colnames(out)[-1] <- vacauses[external.causes]
@@ -1163,8 +1416,11 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 	  		if(data.type == "WHO2012"){
 		  	demog.set <- c("elder", "midage", "adult", "child", "under5", "infant", "neonate", "male", "female", 
 		  		"magegp1", "magegp2", "magegp3", "died_d1", "died_d23", "died_d36", "died_w1", "no_life")
-	  		}else{
+	  		}else if(data.type == "WHO2016"){
 	  			demog.set <- c("i019a", "i019b", "i022a", "i022b", "i022c", "i022d", "i022e", "i022f", "i022g", 
+	  						"i022h", "i022i", "i022j", "i022k", "i022l", "i022m", "i022n", "i114o")
+	  		}else if(data.type == "WHO2022"){
+	  			demog.set <- c("i019b", "i019c", "i022a", "i022b", "i022c", "i022d", "i022e", "i022f", "i022g", 
 	  						"i022h", "i022i", "i022j", "i022k", "i022l", "i022m", "i022n", "i114o")
 	  		}
 	  	}else{
@@ -1212,14 +1468,20 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 				ss <- match(s.set, colnames(data)[-1])
 				val.onlyprem <- as.integer(0)
 				val.notprem <- as.integer(1)
-	  	}else{
+	  	}else if(data.type == "WHO2016"){
 	  			s.set <- "i367a"
 				ss <- match(s.set, colnames(data)[-1])
 				# if negated, then reverse 
 	  			val.onlyprem <- ifelse(negate[ss], as.integer(1), as.integer(0)) 
 	  			val.notprem <- ifelse(negate[ss], as.integer(0), as.integer(1)) 
+	  		}else if(data.type == "WHO2022"){
+	  			s.set <- "i367c"
+			 	 ss <- match(s.set, colnames(data)[-1])
+				# if negated, then reverse 
+	  			val.onlyprem <- ifelse(negate[ss], as.integer(1), as.integer(0)) 
+	  			val.notprem <- ifelse(negate[ss], as.integer(0), as.integer(1)) 
 	  		}
-	 	 	cc.onlyprem <- match("Prematurity", vacauses.current)
+	 	 	cc.onlyprem <- match("Prematurity or low birth weight", vacauses.current)
 	 	 	cc.notprem <- match("Birth asphyxia", vacauses.current)
 			if(!is.na(ss) && !is.na(cc.onlyprem)) impossible <- rbind(impossible, c(as.integer(cc.onlyprem), as.integer(ss), val.onlyprem))
 			if(!is.na(ss) && !is.na(cc.notprem)) impossible <- rbind(impossible, c(as.integer(cc.notprem), as.integer(ss), val.notprem))
@@ -1591,10 +1853,10 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 	# check convergence
     conv <- tryCatch({
 					   if(!is.null(results$csmf.sub)){
-							csmf.diag(results$csmf.sub, conv.csmf, 
+							InSilicoVA::csmf.diag(results$csmf.sub, conv.csmf, 
 								              test = "heidel", verbose = FALSE) 	
 				    	}else{
-				    		csmf.diag(results$p.hat, conv.csmf, 
+				    		InSilicoVA::csmf.diag(results$p.hat, conv.csmf, 
 								              test = "heidel", verbose = FALSE) 
 				    	}
 				}, error = function(condition) {
@@ -1638,10 +1900,10 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
     		add = add + 1
     		# check convergence
 	    	if(!is.null(results$csmf.sub)){
-				conv <- csmf.diag(results$csmf.sub, conv.csmf, 
+				conv <- InSilicoVA::csmf.diag(results$csmf.sub, conv.csmf, 
 					              test = "heidel", verbose = FALSE) 	
 	    	}else{
-	    		conv <- csmf.diag(results$p.hat, conv.csmf, 
+	    		conv <- InSilicoVA::csmf.diag(results$p.hat, conv.csmf, 
 					              test = "heidel", verbose = FALSE) 
 	    	}
     	}
@@ -1702,15 +1964,22 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
     	##
     	}else{
     		p.hat <- p.hat * N/(N + length(externals$ext.id))
-    		temp <- p.hat[, ext1:C.j]
+    		if(ext1 < C.j){
+    			temp <- p.hat[, ext1:C.j]
+    		}else{
+    			# handle the case where externals are at the very end
+    			temp = NULL
+    		}
     		extra <- matrix(externals$ext.csmf, dim(p.hat)[1], length(external.causes), byrow = TRUE)
     		p.hat <- cbind(p.hat[, 1:(ext1 - 1)], extra, temp)
     	}
 
-    	p.indiv <- cbind(p.indiv[, 1:(ext1 - 1)], 
-    						  matrix(0, dim(p.indiv)[1], length(external.causes)), 
+    	p.indiv.new <- cbind(p.indiv[, 1:(ext1 - 1)], 
+    						  matrix(0, dim(p.indiv)[1], length(external.causes)))
+    	if(ext1 < C.j) p.indiv.new <- cbind(p.indiv.new, 
     						  p.indiv[, (ext1:C.j)])
-    	
+    	p.indiv <- p.indiv.new
+
     	p.indiv.ext <- matrix(0, nrow = length(externals$ext.id), ncol = C.j + length(external.causes) )
     	if(length(externals$ext.id) > 0){
     		# WHO 2012
@@ -1751,8 +2020,10 @@ if(pool.j != 0){
 	if(customization.dev){
 		# colnames(levels.gibbs) <- rev(table.dev[level.exist])
 		colnames(levels.gibbs) <- table.dev[level.exist]		
-	}else{
+	}else if(dim(levels.gibbs)[2] == 15){
 		colnames(levels.gibbs) <- c("I", "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "E", "N")
+	}else{
+		colnames(levels.gibbs) <- c("I", "A", "B",  "C",  "D",  "E", "F", "G", "H", "N")
 	}
 	probbase.gibbs <- levels.gibbs
 } 
@@ -1807,7 +2078,7 @@ out <- list(
 
 # get also individual probabilities
 if(!is.null(indiv.CI)){
-	indiv <- get.indiv(data = NULL, object = out, indiv.CI)
+	indiv <- InSilicoVA::get.indiv(data = NULL, object = out, indiv.CI)
 	out$indiv.prob.median <- indiv$median
 	out$indiv.prob.upper <- indiv$upper
 	out$indiv.prob.lower <- indiv$lower			
