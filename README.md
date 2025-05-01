@@ -6,7 +6,6 @@
 * <ins>**_At this time, we do not support this package in any way._**</ins>
 
 Install and load the package with the following commands:
-
 ```
 library(devtools)
 install_github("verbal-autopsy-software/InSilicoVA2022")
