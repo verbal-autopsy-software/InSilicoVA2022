@@ -198,8 +198,8 @@
 #' for(rep in 1:3){
 #' 		tmp <- RandomVA2022
 #' 		for(i in 1:dim(tmp)[1]){
-#' 			tmp[i, 2:dim(tmp)[2]] <- "n"
-#' 			tmp[i, sample(2:dim(tmp)[2], 2)] <- "y"
+#' 			tmp[i, 2:dim(tmp)[2]] <- "."
+#' 			tmp[i, sample(100:dim(tmp)[2], 20)] <- "y"
 #' 		}
 #' 		data <- rbind(data, tmp)
 #' }

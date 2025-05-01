@@ -284,7 +284,7 @@ if(data.type == "WHO2022"){
 		}else{
 			y <- matrix(0, a, b)
 		}  	
-		inter.table <- InterVA.table(standard = standard, table.num.dev = table.num.dev, min = 0)
+		inter.table <- InterVA.table(standard = standard, min = 0)
 		if(is.null(table.dev)){
 			  y[x == "I"] <- inter.table[1]
 		    y[x == "A"] <- inter.table[2]
@@ -301,7 +301,7 @@ if(data.type == "WHO2022"){
 				stop("table.dev and table.num.dev have different length")
 			}
 			for(i in 1:length(table.dev)){
-				y[x == table.dev[i]] <- inter.table[i] 
+				y[x == table.dev[i]] <- table.num.dev[i] 
 			}
 		}
 
@@ -627,6 +627,7 @@ removeExt <- function(data, prob.orig, is.Numeric, subpop, subpop_order_list, ex
 				ext.cod = ext.cod,
 				ext.csmf = ext.csmf))
 }
+
 removeExtV5 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_order_list, external.causes, external.symps, negate){
 ###########################################################
 # function to remove external causes/symps and assign deterministic deaths
@@ -655,7 +656,12 @@ removeExtV5 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_o
 	ext.id <- data[ext.where, 1]
 	ext.sub <- subpop[ext.where]
 	probsub <- change.inter(prob.orig[external.symps, external.causes])
-	csmfsub <- change.inter(csmf.orig[external.causes])
+
+	# get interVA probbase
+	 oldtable <- c("I", "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "E")
+	 oldvals <- c(1, 0.8, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 
+	  0.001, 0.0005, 0.0001, 0.00001)
+   csmfsub <- change.inter(csmf.orig[external.causes], table.dev = oldtable, table.num.dev = oldvals)
 
 	# delete the causes from probbase
 	prob.orig <- prob.orig[ -(extSymps), -(extCauses)]
@@ -694,6 +700,32 @@ removeExtV5 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_o
 				negate = negate))
 	}
 
+
+
+	if(!is.null(subpop)){
+		ext.csmf <- vector("list", length(subpop_order_list))
+		for(i in 1:length(ext.csmf)){
+			ext.csmf[[i]] <- rep(0, length(extCauses))
+			ext.prob.temp <- ext.prob[which(ext.sub == subpop_order_list[i]), , drop = FALSE]
+			if(!is.null(ext.prob.temp)){
+					ext.csmf[[i]] <- apply(ext.prob.temp, 2, mean) * dim(ext.prob.temp)[1] / length(which(subpop == subpop_order_list[i]))		
+			}
+		}
+	}else{
+		ext.csmf <- apply(ext.prob, 2, mean) * length(ext.id) / N.all	
+	}
+	if(length(ext.where) > 0) subpop <- subpop[-ext.where]
+	return(list(data = data, 
+				subpop = subpop,
+				prob.orig = prob.orig, 
+				ext.sub  = ext.sub,
+				ext.id = ext.id, 
+				ext.prob = ext.prob,
+				ext.cod = NULL,
+				ext.csmf = ext.csmf, 
+				negate = negate))
+}
+
 removeExtV2022 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpop_order_list, external.causes, external.symps, negate){
 ###########################################################
 # function to remove external causes/symps and assign deterministic deaths
@@ -729,12 +761,21 @@ removeExtV2022 <- function(data, prob.orig, csmf.orig, is.Numeric, subpop, subpo
 	negate <- negate[-extSymps]
 	if(length(extSymps) > 0) data <- data[, -(extSymps + 1)]
 	if(length(ext.where) > 0){
-		probs <- matrix(1, dim(extData)[1], length(external.causes))
+		probs <- matrix(0, dim(extData)[1], length(external.causes))
 		for(i in 1:dim(extData)[1]){
-			for(j in 1:length(external.causes)){
-				probs[i, j] <- csmfsub[j] * prod(probsub[which(extData[i,] == pos), j])
-			}
-			probs[i, ] <- probs[i, ] / sum(probs[i, ])
+			# Find which injuries are on
+			which.inj <- which(extData[i,] == pos)
+			# The first two are generic injury indicators that does not contribute
+			#   to specific injuries
+			# This is hard coded and may need to be revised with future probbase!
+			which.inj <- which.inj[which.inj > 2]
+			for(j in which.inj){
+				which.cause <- which(probsub[j, ] == 1)
+				probs[i, which.cause] <- csmfsub[which.cause]  
+			} 
+			denom <- sum(probs[i, ])
+			if(denom == 0) denom <- 1
+			probs[i, ] <- probs[i, ] / denom
 		}
 		ext.prob <- probs	
 		# delete death confirmed external
@@ -1081,11 +1122,12 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 		   	# all causes columns: column 8 to 71
 		   	# all symptoms rows: column 2 to 343
 
-			# Prior does not matter, just remove + and - sign now before updating them to be better
 			Sys_Prior <- probbase[1,8:71]
-			Sys_Prior <- gsub("\\+", "", Sys_Prior)
-			Sys_Prior <- gsub("\\-", "", Sys_Prior)
-			Sys_Prior <- as.numeric(change.inter(Sys_Prior, order = FALSE), standard = TRUE)
+			# get interVA probbase
+			 oldtable <- c("I", "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "E")
+			 oldvals <- c(1, 0.8, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 
+			  0.001, 0.0005, 0.0001, 0.00001)
+			Sys_Prior <- as.numeric(change.inter(Sys_Prior, order = FALSE, table.dev = oldtable, table.num.dev = oldvals), standard = TRUE)
 			prob.orig <- probbase[2:343,8:71]
 		   	# subst.vector <- probbase[2:354, 6]
 	  	negate <- rep(FALSE, dim(prob.orig)[1])
@@ -1296,10 +1338,6 @@ ParseResult <- function(N_sub.j, C.j, S.j, N_level.j, pool.j, fit){
 			  externals <- removeExtV5(data,prob.orig, csmf.orig, isNumeric, subpop, subpop_order_list, external.causes, external.symps, negate)
   		}else if(data.type == "WHO2022"){
 	  			csmf.orig <- probbase[1, -(1:7)]
-	  			#  Need better prior here TODO!!
-	  			csmf.orig <- gsub("\\+", "", csmf.orig)
-					csmf.orig <- gsub("\\-", "", csmf.orig)
-
 				  externals <- removeExtV2022(data,prob.orig, csmf.orig, isNumeric, subpop, subpop_order_list, external.causes, external.symps, negate)
   		}
   		data <- externals$data
