@@ -247,10 +247,21 @@ For more detail of model specification, see the paper on
 }
 \examples{
 \dontrun{
-data(RandomVA5) 
-fit <- insilico(RandomVA5, subpop = NULL,  
-                Nsim = 20, burnin = 10, thin = 1 , seed = 1,
+data(RandomVA2022) 
+data <- RandomVA2022
+for(rep in 1:3){
+		tmp <- RandomVA2022
+		for(i in 1:dim(tmp)[1]){
+			tmp[i, 2:dim(tmp)[2]] <- "."
+			tmp[i, sample(100:dim(tmp)[2], 20)] <- "y"
+		}
+		data <- rbind(data, tmp)
+}
+data$ID <- 1:dim(data)[1]
+fit <- insilico(data, subpop = NULL,  
+                Nsim = 2000, burnin = 1000, thin = 1 , seed = 1,
 			 auto.length = FALSE)
+summary(fit)
 
 }
 }

@@ -1,15 +1,15 @@
 Package: InSilicoVA2022
 Type: Package
-Title: Probabilistic Verbal Autopsy Coding with 'InSilicoVA' Algorithm for the WHO 2022 VA Instrument: an Unvalidated Test Version
+Title: Probabilistic Verbal Autopsy Coding with 'InSilicoVA' Algorithm for the WHO 2022 VA Instrument
 Version: 0.0.999
 Date: 2025-04-30
 Authors@R: c(
-  person("CDC Foundation", email = "interva2022@cdcfoundation.org", role = c("aut", "cre"))
+  person("openVA Team for CDC Foundation", email = "interva2022@cdcfoundation.org", role = c("aut", "cre"))
   )
 Depends: R (>= 4.0.0), rJava, coda, ggplot2, InterVA5
 Imports: methods, InSilicoVA
 SystemRequirements: Java (>= 7)
-Description: Computes individual causes of death and population cause-specific mortality fractions using the 'InSilicoVA' algorithm from McCormick et al. (2016) <DOI:10.1080/01621459.2016.1152191>. It uses data derived from the WHO 2022 VA instrument. This package has not been validated for the correctness.
+Description: Computes individual causes of death and population cause-specific mortality fractions using the 'InSilicoVA' algorithm for the WHO 2022 instrument. The algorithm has not been tested or validated at the moment. Please use at your own risk.
 License: GPL-3
 URL: https://github.com/verbal-autopsy-software/InSilicoVA2022
 BugReports: https://github.com/verbal-autopsy-software/InSilicoVA2022/issues
