@@ -1,12 +1,14 @@
-# InSilicoVA2022
+**Test version** of InSilicoVA for the WHO 2022 VA instrument. 
 
-Test version of InSilicoVA model for the 2022 WHO VA instrument. Install the package with the following command:
+
+* <ins>**_Use at your own risk: we do not suggest or guarantee useful operation of any kind._**</ins>
+* <ins>**_The package has not been tested or validated in any way._**</ins>
+* <ins>**_At this time, we do not support this package in any way._**</ins>
+
+Install the package with the following command:
 
 ```
 library(devtools)
 install_github("verbal-autopsy-software/InSilicoVA2022")
 library(InSilicoVA2022Prerelease)
 ```
-
-The package has not been tested or validated yet. Please use at your own risk. We currently do not have support of any kind for this package.
-
