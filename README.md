@@ -1,4 +1,4 @@
-**Pre-release Test version** of InSilicoVA for the WHO 2022 VA instrument. 
+**Pre-release test version** of InSilicoVA for the WHO 2022 VA instrument. 
 
 
 * <ins>**_Use at your own risk: we do not suggest or guarantee useful operation of any kind._**</ins>
